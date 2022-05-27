@@ -54,6 +54,7 @@ simul_IDM <- function(nsim, prob_scaled_vec, N = 2000, W_pos = 52500, W_neg = 84
     location <- c(y1, y2)
     #print(((y1<0.6)&(y2<0.6))|((y1>0.4)&(y2>0.4)))
     while(((y1<(1-h))&(y2<(1-h)))|((y1>h)&(y2>h))){
+      print(iter)
       #dy1 <- -beta*D* dFdy1(y1,y2, W_pos, W_neg, B1, theta, beta, N) * dt + sqrt(2*D)*Wiener(n = 1, pts = 1, K = 1)
       wiener_post1 <- rnorm(1, 0, sqrt(iter*dt))
       wiener_post2 <- rnorm(1, 0, sqrt(iter*dt))
@@ -184,6 +185,7 @@ simul_DDM <- function(nsim, v=6, a=3, t0=0.3, c=1, sv=1){
     iter <- 1
 
     while((y<a)&(y>0)){
+      print(iter)
       wiener_post <- rnorm(1, 0, sqrt(iter*dt))
       dy <- v*dt + c*(wiener_post - wiener_pre)
 
@@ -205,7 +207,7 @@ simul_DDM <- function(nsim, v=6, a=3, t0=0.3, c=1, sv=1){
   result_df <- data.frame(result)
   #print(result)
   colnames(result_df) <- c('RT','Response')
-  print(Sys.time() - start_time)
+  #print(Sys.time() - start_time)
   return(result_df)
 }
 

@@ -202,7 +202,7 @@ for (i in 1:nSim){
 }
 
 par(mfrow = c(3, 3))
-sample_size <- 38
+sample_size <- 42
 plot(Cs[1:sample_size], a, xlab = "Stimulus Distinctness", ylab = "Boundary Seperation")
 plot(Cs[1:sample_size], v, xlab = "Stimulus Distinctness", ylab = "Drift Rate")
 plot(Cs[1:sample_size], t0, xlab = "Stimulus Distinctness", ylab = "Non-decision Time")
