@@ -1,4 +1,5 @@
 require(rtdists)
+library(diffIRT)
 
 # Exp. 1; Wagenmakers, Ratcliff, Gomez, & McKoon (2008, JML)
 data(speed_acc)   
@@ -181,6 +182,33 @@ curve(normalised_pdiffusion(x, response = "upper",
                             st0=IDM_diff$par["st0"], 
                             sv=IDM_diff$par["sv"]), 
       add=TRUE, col = "yellow", lty = 2)
+
+
+#### recover parameters from data simulated from DDM
+data=simdiffT(N=10000,a=2,mv=1,sv=0.3,ter=0.3)
+simdiff_results <- data.frame('RT' = data$rt, 'Response' = data$x+1)
+prop.table(table(simdiff_results$Response))
+
+
+simdiffT_diffusion <- function(pars, rt, response){
+  densities <- ddiffusion(rt, response=response, 
+                          a=pars["a"], 
+                          v=pars["v"], 
+                          t0=pars["t0"], 
+                          #sz=pars["sz"], 
+                          #st0=pars["st0"],
+                          sv=pars["sv"])
+  if (any(densities == 0)) return(1e6)
+  return(-sum(log(densities)))
+}
+start <- c(runif(2, 0.5, 3), 0.1, runif(1, 0, 0.5))
+names(start) <- c("a", "v", "t0", "sv") # , "sz", "st0"
+simdiffT_diff <- nlminb(start, simdiffT_diffusion, lower = 0, 
+                   rt=simdiff_results$RT, 
+                   response=simdiff_results$Response)
+simdiffT_diff
+
+
 
 
 
