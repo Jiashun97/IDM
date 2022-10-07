@@ -91,6 +91,96 @@ continue <- function(y1, y2, h){
   return(((y1<(1-h))&(y2<(1-h)))|((y1>h)&(y2>h)))
 }
 
+get_state <- function(y1,y2,h){
+  if((y1>(1-h))&(y2<h)){
+    state <- 1
+  }else if((y1<h)&(y2>(1-h))){
+    state <- 2
+  }else{
+    state <- 0
+  }
+}
+
+get_state_DDM <- function(y,a){
+  if(y > a){
+    state <- 1
+  }else if(y < 0){
+    state <- 2
+  }else{
+    state <- 0
+  }
+}
+
+simul_IDM_non_stop <- function(C = 0.2, N = 2000, W_pos = 52500, W_neg = 8400, Bns = 2500, Bs = 1000, # mode = "coarse-grained"
+                                beta = 1/24, theta = 51450, Ter = 0.3, h = 0.4, D = 0.05, sigma = 0.01, dt = 0.001, 
+                                init_loc = c(0.3,0.3), n_iter = 100){ # D = 0.05, 2/(1000*exp(1)) 
+  B1 <- Bs*(1+C) + Bns
+  B2 <- Bs*(1-C) + Bns
+  #start_time <- Sys.time() 
+  y1 <- init_loc[1] #sample_y[1]
+  y2 <- init_loc[2] #sample_y[2]
+  iter <- 1
+  location <- c(y1, y2)
+    
+  while(iter<=n_iter){
+    dW1 <- rnorm(1)*sqrt(dt) 
+    dW2 <- rnorm(1)*sqrt(dt)
+    
+    dy1 <- -beta*D*dFdy1(y1,y2, W_pos, W_neg, B1, theta, beta, N)*dt + sqrt(2*D)*dW1
+    dy2 <- -beta*D*dFdy2(y1,y2, W_pos, W_neg, B2, theta, beta, N)*dt + sqrt(2*D)*dW2
+    
+    y1 <- clamp(y1 + dy1) # clamp to [0,1]
+    y2 <- clamp(y2 + dy2)
+    location <- cbind(location, c(y1,y2))
+    iter <- iter + 1
+  }
+  state <- get_state(y1,y2,h)
+  return(list(loc = c(y1,y2), state = state))
+}
+
+
+
+simul_DDM_non_stop <- function(v, dt = 0.001, a = 0.8, init_loc = 0.4, n_iter = 2000, c = sqrt(0.1)){
+
+  iter <- 1
+  location <- init_loc
+  y <- init_loc
+  
+  while(iter<=n_iter){
+    dW <- rnorm(1)*sqrt(dt) 
+    dy <- v*dt + c*dW
+    y <- y + dy
+    
+    location <- c(location, y)
+    iter <- iter + 1
+  }
+  state <- get_state_DDM(y,a)
+  return(list(loc = y, state = state))
+}
+
+
+simul_DDM <- function(v, dt = 0.001, a = 0.8, init_loc = 0.4, c = sqrt(0.1)){
+  
+  iter <- 1
+  location <- init_loc
+  y <- init_loc
+  
+  while(get_state_DDM(y,a)==0){
+    dW <- rnorm(1)*sqrt(dt) 
+    dy <- v*dt + c*dW
+    y <- y + dy
+    
+    location <- c(location, y)
+    iter <- iter + 1
+  }
+  
+  state <- get_state_DDM(y,a)
+  return(list(loc = y, state = state))
+}
+
+
+
+
 simul_IDM_one_trial <- function(C = 0.2, N = 2000, W_pos = 52500, W_neg = 8400, Bns = 2500, Bs = 1000, # mode = "coarse-grained"
                       beta = 1/24, theta = 51450, Ter = 0.3, h = 0.4, D = 0.05, sigma = 0.01, dt = 0.001, 
                       init_loc = c(0.3,0.3), mode = "Euler-Maruyama"){ # D = 0.05, 2/(1000*exp(1))
@@ -495,27 +585,27 @@ IDM_DDM <- function(C=0.2, Bns = 2500, Bs = 1000, Ter = 0.3, h = 0.4){
 }
 
 ## simulation drift-diffusion model
-simul_DDM_one_trial <- function(v=6, a=3, t0=0.3, c=1, sv=1){
-  v <- rnorm(1, v, sv)
-  ys <- c()
-  y <- a/2
-  dt <- 0.001
-  iter <- 1
-  wiener_pre <- 0
+#simul_DDM_one_trial <- function(v=6, a=3, t0=0.3, c=1, sv=1){
+#  v <- rnorm(1, v, sv)
+#  ys <- c()
+#  y <- a/2
+#  dt <- 0.001
+#  iter <- 1
+#  wiener_pre <- 0
   
-  while((y<a)&(y>0)){
-    wiener_post <- rnorm(1, 0, sqrt(iter*dt))
-    dy <- v* dt + c*(wiener_post - wiener_pre)
-    print(c*(wiener_post - wiener_pre)/v*dt)
+#  while((y<a)&(y>0)){
+#    wiener_post <- rnorm(1, 0, sqrt(iter*dt))
+#    dy <- v* dt + c*(wiener_post - wiener_pre)
+#    print(c*(wiener_post - wiener_pre)/v*dt)
     
-    wiener_pre <- wiener_post
+#    wiener_pre <- wiener_post
     
-    y <- y + dy 
-    iter <- iter + 1
-    ys <- c(ys, y)
-    }
-  return(ys)
-}
+#    y <- y + dy 
+#    iter <- iter + 1
+#    ys <- c(ys, y)
+#    }
+#  return(ys)
+#}
 
 #ys <- simul_DDM_one_trial()
 #ys
@@ -523,42 +613,42 @@ simul_DDM_one_trial <- function(v=6, a=3, t0=0.3, c=1, sv=1){
 
 
 ## many DDM trials
-simul_DDM <- function(nsim, v=6, a=3, t0=0.3, c=1, sv=1){
-  start_time <- Sys.time()
-  result <- c()
-  for(i in 1:nsim){
-    v <- rnorm(1, v, sv)
-    y <- a/2
-    wiener_pre <- 0
-    dt <- 0.001
-    iter <- 1
+#simul_DDM <- function(nsim, v=6, a=3, t0=0.3, c=1, sv=1){
+#  start_time <- Sys.time()
+#  result <- c()
+#  for(i in 1:nsim){
+#    v <- rnorm(1, v, sv)
+#    y <- a/2
+#    wiener_pre <- 0
+#    dt <- 0.001
+#    iter <- 1
+#
+#    while((y<a)&(y>0)){
+#      print(iter)
+#      wiener_post <- rnorm(1, 0, sqrt(iter*dt))
+#      dy <- v*dt + c*(wiener_post - wiener_pre)#
 
-    while((y<a)&(y>0)){
-      print(iter)
-      wiener_post <- rnorm(1, 0, sqrt(iter*dt))
-      dy <- v*dt + c*(wiener_post - wiener_pre)
+#      wiener_pre <- wiener_post
 
-      wiener_pre <- wiener_post
+#      y <- y + dy 
+#      iter <- iter + 1
+#      }
+#    if (y>=a){
+#      R <- 2 # correct response
+#    }
+#    if (y<=0){
+#      R <- 1
+#    }
+#    RT <- iter*dt + t0
+#    result <- rbind(result, c(RT, R))
 
-      y <- y + dy 
-      iter <- iter + 1
-      }
-    if (y>=a){
-      R <- 2 # correct response
-    }
-    if (y<=0){
-      R <- 1
-    }
-    RT <- iter*dt + t0
-    result <- rbind(result, c(RT, R))
-
-  }
-  result_df <- data.frame(result)
-  #print(result)
-  colnames(result_df) <- c('RT','Response')
-  #print(Sys.time() - start_time)
-  return(result_df)
-}
+#  }
+#  result_df <- data.frame(result)
+#  #print(result)
+#  colnames(result_df) <- c('RT','Response')
+#  #print(Sys.time() - start_time)
+#  return(result_df)
+#}
 
 #simul_results_DDM <- simul_DDM(nsim = 1000, a=2, v=1, t0=0.3, sv=0.3)
 #prop.table(table(simul_results_DDM$Response))
