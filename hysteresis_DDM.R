@@ -101,7 +101,7 @@ for (i in 1:n_sim){
   init_loc <- 0.4
   states <- c()
   for(v in vs){
-    result_iter <- simul_DDM_non_stop(v = 0.3, init_loc = init_loc, n_iter = 1000)
+    result_iter <- simul_DDM(v = 0.3, init_loc = init_loc)
     init_loc <- result_iter$loc
     state <- result_iter$state
     states <- c(states, state)

@@ -10,9 +10,10 @@ nSim <- 100
 a <-c()
 v <- c()
 t0 <- c()
-Cs <- runif(100,0,0.4)
-Ters <- runif(100,0,0.6)
+Cs <- runif(100,0.05,0.4)
 hs <- runif(100,0.2,0.6)
+Ters <- runif(100,0.1,0.6)
+
 
 plot(0,0, xlim = c(0,0.4), ylim = c(0,6), col = "white",
      xlab = "Stimulus Distinctness", ylab = "Drift Rate")
@@ -38,22 +39,52 @@ cor(Cs, v)
 plot(Cs, v)
 
 
-
+# full axis labels
 {
 par(mfrow = c(3, 3))
 sample_size <- 100
-plot(Cs[1:sample_size], a, xlim = c(0,0.4), xlab = "Stimulus Distinctness", ylab = "Boundary Seperation")
 plot(Cs[1:sample_size], v, xlim = c(0,0.4), xlab = "Stimulus Distinctness", ylab = "Drift Rate")
-plot(Cs[1:sample_size], t0, xlim = c(0,0.4), xlab = "Stimulus Distinctness", ylab = "Non-decision Time")
-
-plot(Ters[1:sample_size], a, xlab = "Non-decision Time", ylab = "Boundary Seperation")
-plot(Ters[1:sample_size], v, xlab = "Non-decision Time", ylab = "Drift Rate")
-plot(Ters[1:sample_size], t0, xlab = "Non-decision Time", ylab = "Non-decision Time")
-
-plot(hs[1:sample_size], a, xlab = "Detection Box Size", ylab = "Boundary Seperation")
 plot(hs[1:sample_size], v, xlab = "Detection Box Size", ylab = "Drift Rate")
+plot(Ters[1:sample_size], v, xlab = "Non-decision Time", ylab = "Drift Rate")
+
+
+plot(Cs[1:sample_size], a, xlab = "Stimulus Distinctness", ylab = "Boundary Seperation")
+plot(hs[1:sample_size], a, xlab = "Detection Box Size", ylab = "Boundary Seperation")
+plot(Ters[1:sample_size], a, xlab = "Non-decision Time", ylab = "Boundary Seperation")
+
+plot(Cs[1:sample_size], t0, xlim = c(0,0.4), xlab = "Stimulus Distinctness", ylab = "Non-decision Time")
 plot(hs[1:sample_size], t0, xlab = "Detection Box Size", ylab = "Non-decision Time")
+plot(Ters[1:sample_size], t0, xlab = "Non-decision Time", ylab = "Non-decision Time")
 }
+
+# marginal labels
+{
+  plot_mar <- 3
+  par(mfrow = c(3, 3))
+  par(mar = c(plot_mar, plot_mar, 0.5, 0.5))
+  
+  plot(Cs, v, xlim = c(0.05,0.4), xlab = "", ylim = c(0,3), ylab = "Drift Rate", xaxt='n')
+  mtext("Drift Rate", side = 2, line = 2, cex = 0.7)
+  plot(hs, v, xlim = c(0.2,0.6), xlab = "", ylim = c(0,3), ylab = "", xaxt='n', yaxt='n')
+  plot(Ters, v, xlim = c(0.1,0.6), xlab = "", ylim = c(0,3), ylab = "", xaxt='n', yaxt='n')
+  
+  plot(Cs, a, xlim = c(0.05,0.4), xlab = "", ylim = c(0.4,0.9), ylab = "Boundary Seperation", xaxt='n')
+  mtext("Boundary Seperation", side = 2, line = 2, cex = 0.7)
+  plot(hs, a, xlim = c(0.2,0.6), xlab = "", ylim = c(0.4,0.9), ylab = "", xaxt='n', yaxt='n')
+  plot(Ters, a, xlim = c(0.1,0.6), xlab = "", ylim = c(0.4,0.9), ylab = "", xaxt='n', yaxt='n')
+  
+  plot(Cs, t0, xlim = c(0.05,0.4), xlab = "", ylim = c(0.1,0.7), ylab = "Non-decision Time")
+  mtext("Non-decision Time", side = 2, line = 2, cex = 0.7)
+  mtext("Stimulus Distinctness", side = 1, line = 2, cex = 0.7)
+  plot(hs, t0, xlim = c(0.2,0.6), xlab = "", ylim = c(0.1,0.7), ylab = "", yaxt='n')
+  mtext("Detection Box Size", side = 1, line = 2, cex = 0.7)
+  plot(Ters, t0, xlim = c(0.1,0.6), xlab = "", ylim = c(0.1,0.7), ylab = "", yaxt='n')
+  mtext("Non-decision Time", side = 1, line = 2, cex = 0.7)
+}
+#bottom_text <- c("Drift Rate", "Drift Rate", "Drift Rate")
+  
+
+
   
 plot(Cs[1:sample_size], v, xlab = "Stimulus Distinctness", ylab = "Drift Rate")
 plot(Cs[1:sample_size],v/a, xlab = "Stimulus Distinctness", ylab = "Drift Rate")
@@ -64,12 +95,26 @@ plot(1/hs[1:sample_size], a, xlab = "Detection Box Size", ylab = "Boundary Seper
 cor(Cs[1:sample_size],v)
 cor(Cs[1:sample_size],v/a)
 
-results <- data.frame(Cs = Cs[1:sample_size], a = a, v = v, t0 = t0)
-pcor(results)
+results <- data.frame(Cs = Cs, Ters = Ters, hs = hs, a = a, v = v, t0 = t0)
+write.csv(results,'IDM_DDM_result.csv')
 
 simul_IDM(1000, prob_scaled_vec = prob_scaled_vec)
 
 
 
+df <- read.csv("/Users/wangjiashun/Documents/GitHub/IDM/fit_results")
 
+
+par(mfrow = c(3, 3))
+plot(df$c, df$a, xlim = c(0,0.4), xlab = "Stimulus Distinctness", ylab = "Boundary Seperation")
+plot(df$c, df$v, xlim = c(0,0.4), xlab = "Stimulus Distinctness", ylab = "Drift Rate")
+plot(df$c, df$t0, xlab = "Stimulus Distinctness", ylab = "Non-decision Time")
+
+plot(df$ter, df$a, xlab = "Non-decision Time", ylab = "Boundary Seperation")
+plot(df$ter, df$v, xlab = "Non-decision Time", ylab = "Drift Rate")
+plot(df$ter, df$t0, xlab = "Non-decision Time", ylab = "Non-decision Time")
+
+plot(df$h, df$a, xlab = "Detection Box Size", ylab = "Boundary Seperation")
+plot(df$h, df$v, xlab = "Detection Box Size", ylab = "Drift Rate")
+plot(df$h, df$t0, xlab = "Detection Box Size", ylab = "Non-decision Time")
 

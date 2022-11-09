@@ -175,10 +175,45 @@ simul_DDM <- function(v, dt = 0.001, a = 0.8, init_loc = 0.4, c = sqrt(0.1)){
   }
   
   state <- get_state_DDM(y,a)
-  return(list(loc = y, state = state))
+  return(list(loc = y, state = state, iter = iter, traj = location))
 }
 
-
+simul_DDM_post <- function(v, dt = 0.001, a = 0.8, post_iter = 500, init_loc = 0.4, c = sqrt(0.1)){
+  
+  iter <- 1
+  location <- init_loc
+  y <- init_loc
+  
+  while(iter <= post_iter){
+    dW <- rnorm(1)*sqrt(dt) 
+    dy <- v*dt + c*dW
+    y <- y + dy
+    
+    location <- c(location, y)
+    iter <- iter + 1
+  }
+  
+  state <- get_state_DDM(y,a)
+  return(list(loc = y, state = state))
+}
+# y>a => 1, y<0 => 2, otherwise 0
+simul_DDM_com <- function(v, dt = 0.001, a = 0.8, post_iter = 500, init_loc = 0.4, c = sqrt(0.1)){
+  init_result <- simul_DDM(v = v, a = a, init_loc = init_loc)
+  final_result <- simul_DDM_post(v = v, a = a, post_iter = post_iter, init_loc = init_result$loc)
+  
+  uncertain <- as.numeric(final_result$state == 0) # whether final state is in the middle of two boundaries
+  
+  if((init_result$state==1)&(final_result$state==2)){ # whether decision changes
+    change_of_mind <- 1
+  }else if((init_result$state==2)&(final_result$state==1)){
+    change_of_mind <- 1
+  }else{
+    change_of_mind <- 0
+  }
+  
+  return(list(uncertain = uncertain, change = change_of_mind, iter = init_result$iter))
+  
+}
 
 
 simul_IDM_one_trial <- function(C = 0.2, N = 2000, W_pos = 52500, W_neg = 8400, Bns = 2500, Bs = 1000, # mode = "coarse-grained"
@@ -186,7 +221,6 @@ simul_IDM_one_trial <- function(C = 0.2, N = 2000, W_pos = 52500, W_neg = 8400, 
                       init_loc = c(0.3,0.3), mode = "Euler-Maruyama"){ # D = 0.05, 2/(1000*exp(1))
   B1 <- Bs*(1+C) + Bns
   B2 <- Bs*(1-C) + Bns
-  #start_time <- Sys.time() 
   y1 <- init_loc[1] #sample_y[1]
   y2 <- init_loc[2] #sample_y[2]
   iter <- 1
@@ -229,18 +263,9 @@ simul_IDM_one_trial <- function(C = 0.2, N = 2000, W_pos = 52500, W_neg = 8400, 
     print("Wrong mode!")
   }
   RT <- clamp(iter*dt + Ter, 0, 3)
-  R <- get_res(y1 = y1, y2 = y2, h = h, B1 = B1, B2 = B2)
-  #print(i)
-  #print(iter)
-  if ((i%%1000) == 0){
-    cat("simulation ",i," has finished. ")
-    cat(iter, "iterations.")
-  }
-
-  #print(Sys.time() - start_time)
-  cat("Averaged teration is ", mean(iters), ". ")
+  R <- get_state(y1 = y1, y2 = y2, h = h)
   
-  return(list("Trajectory" = location, "RT" = RT, "R" = R))
+  return(list("Trajectory" = location, "RT" = RT, "R" = R, "loc" = c(y1,y2), "iter" = iter))
 }
 
 
@@ -257,7 +282,7 @@ simul_IDM_post_trial <- function(duration, init_loc = c(0.3,0.3), C = 0.2, N = 2
   location <- c(y1, y2)
   if(mode == "Euler-Maruyama"){
     
-    while(iter<duration){
+    while(iter<=duration){
       dW1 <- rnorm(1)*sqrt(dt) 
       dW2 <- rnorm(1)*sqrt(dt)
       
@@ -267,13 +292,13 @@ simul_IDM_post_trial <- function(duration, init_loc = c(0.3,0.3), C = 0.2, N = 2
       y1 <- clamp(y1 + dy1) # clamp to [0,1]
       y2 <- clamp(y2 + dy2)
       location <- cbind(location, c(y1,y2))
-      if(iter>100){
-        return(list("Trajectory" = location))
-      }
+     # if(iter>100){
+     #    return(list("Trajectory" = location))
+     # }
       iter <- iter + 1
     }
   }else if(mode == "coarse-grained"){
-    while(iter<duration){
+    while(iter<=duration){
       y_step <- mvrnorm(n = 1, mu=c(0,0), Sigma=matrix(c(sigma^2,0,0,sigma^2), 2,2))
       y_candidate1 <- clamp(y1+y_step[1])
       y_candidate2 <- clamp(y2+y_step[2])
@@ -298,12 +323,29 @@ simul_IDM_post_trial <- function(duration, init_loc = c(0.3,0.3), C = 0.2, N = 2
   }else{
     print("Wrong mode!")
   }
-  cat("Averaged teration is ", mean(iters), ". ")
-  
-  return(list("Trajectory" = location))
+  R <- get_state(y1 = y1, y2 = y2, h = h)
+  #print(c(y1,y2))
+  return(list("Trajectory" = location, "loc" = c(y1,y2), "R" = R))
 }
 
 
+simul_IDM_com <- function(C = 0.1, h = 0.4, duration = 500){
+  init_result <- simul_IDM_one_trial(C = C, h = h, mode = "coarse-grained")
+  final_result <- simul_IDM_post_trial(duration = duration, init_loc = init_result$loc, mode = "coarse-grained")
+  
+  uncertain <- as.numeric(final_result$R == 0) # whether final state is in the middle of two boundaries
+  
+  if((init_result$R==1)&(final_result$R==2)){ # whether decision changes
+    change_of_mind <- 1
+  }else if((init_result$R==2)&(final_result$R==1)){
+    change_of_mind <- 1
+  }else{
+    change_of_mind <- 0
+  }
+  
+  return(list(uncertain = uncertain, change = change_of_mind, iter = init_result$iter))
+  
+}
 
 simul_continuous <- function(stim_t = 5000, rest_t = 2000, init_loc = c(0.3,0.3), C = 0.2, N = 2000, W_pos = 52500, W_neg = 8400, 
                              Bns = 2500, Bs = 1000, beta = 1/24, theta = 51450, Ter = 0.3, h = 0.4, 
