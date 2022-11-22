@@ -17,7 +17,7 @@ for (j in 1:3){
   props_change <- c()
   
   for(v in vs){
-    
+    print(v)
     #v <- v
     
     uncertain <- c()
@@ -53,3 +53,35 @@ plot
 
 #table(uncertain)
 #table(change)
+write.csv(df,'DDM_com_a_0_4.csv')
+
+
+
+
+df <- read.csv('DDM_com_a_0_4.csv')
+plot <- ggplot(data = df, aes(x=x, y=val, colour=variable)) + 
+  geom_line() + 
+  #scale_fill_discrete(breaks=c("500 ms", "1000 ms", "2000 ms"))
+  ylim(0, 0.2) +
+  xlab("Drift Rate") + 
+  ylab("P(Change of Mind)") +
+  labs(colour = "Post-decision Period") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.key = element_rect(fill = "white")) 
+plot
+
+
+df <- read.csv('IDM_com_result_h_0_5.csv')
+plot <- ggplot(data = df, aes(x=x, y=val, colour=variable)) + 
+  geom_line() + 
+  #scale_fill_discrete(breaks=c("500 ms", "1000 ms", "2000 ms"))
+  ylim(0, 0.2) +
+  xlab("Stimulus Strength") + 
+  ylab("P(Change of Mind)") +
+  labs(colour = "Post-decision Period") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+plot
+
+

@@ -88,10 +88,20 @@ get_res <- function(y1,y2,h,B1,B2){
 }
 
 continue <- function(y1, y2, h){
-  return(((y1<(1-h))&(y2<(1-h)))|((y1>h)&(y2>h)))
+  overlap <- ((y1>(1-h))&(y2>(1-h)))&((y1<h)&(y2<h)) # in overlapped region?
+  if (overlap){
+    return(TRUE)
+  }else{
+    return(((y1<(1-h))&(y2<(1-h)))|((y1>h)&(y2>h)))
+  }
 }
 
 get_state <- function(y1,y2,h){
+  overlap <- ((y1>(1-h))&(y2>(1-h)))&((y1<h)&(y2<h))
+  if(overlap){
+    return(0)
+  }
+  
   if((y1>(1-h))&(y2<h)){
     state <- 1
   }else if((y1<h)&(y2>(1-h))){
@@ -99,6 +109,7 @@ get_state <- function(y1,y2,h){
   }else{
     state <- 0
   }
+  return(state)
 }
 
 get_state_DDM <- function(y,a){
@@ -109,6 +120,18 @@ get_state_DDM <- function(y,a){
   }else{
     state <- 0
   }
+  return(state)
+}
+
+mind_change <- function(s1,s2){
+  if((s1==1)&(s2==2)){
+    return(TRUE)
+  }
+  
+  if((s1==2)&(s2==1)){
+    return(TRUE)
+  }
+  return(FALSE)
 }
 
 simul_IDM_non_stop <- function(C = 0.2, N = 2000, W_pos = 52500, W_neg = 8400, Bns = 2500, Bs = 1000, # mode = "coarse-grained"
@@ -218,7 +241,7 @@ simul_DDM_com <- function(v, dt = 0.001, a = 0.8, post_iter = 500, init_loc = 0.
 
 simul_IDM_one_trial <- function(C = 0.2, N = 2000, W_pos = 52500, W_neg = 8400, Bns = 2500, Bs = 1000, # mode = "coarse-grained"
                       beta = 1/24, theta = 51450, Ter = 0.3, h = 0.4, D = 0.05, sigma = 0.01, dt = 0.001, 
-                      init_loc = c(0.3,0.3), mode = "Euler-Maruyama"){ # D = 0.05, 2/(1000*exp(1))
+                      init_loc = c(0.3,0.3), mode = "coarse-grained"){ # D = 0.05, 2/(1000*exp(1))
   B1 <- Bs*(1+C) + Bns
   B2 <- Bs*(1-C) + Bns
   y1 <- init_loc[1] #sample_y[1]
@@ -272,7 +295,7 @@ simul_IDM_one_trial <- function(C = 0.2, N = 2000, W_pos = 52500, W_neg = 8400, 
 
 simul_IDM_post_trial <- function(duration, init_loc = c(0.3,0.3), C = 0.2, N = 2000, W_pos = 52500, W_neg = 8400, 
                                  Bns = 2500, Bs = 1000, beta = 1/24, theta = 51450, Ter = 0.3, h = 0.4, 
-                                 D = 0.05, sigma = 0.01, dt = 0.001, mode = "Euler-Maruyama"){ # D = 0.05, 2/(1000*exp(1))
+                                 D = 0.05, sigma = 0.01, dt = 0.001, mode = "coarse-grained"){ # D = 0.05, 2/(1000*exp(1))
   B1 <- Bs*(1+C) + Bns
   B2 <- Bs*(1-C) + Bns
   #start_time <- Sys.time() 
@@ -298,6 +321,10 @@ simul_IDM_post_trial <- function(duration, init_loc = c(0.3,0.3), C = 0.2, N = 2
       iter <- iter + 1
     }
   }else if(mode == "coarse-grained"){
+    loc_com <- NA
+    iter_post <- NA
+    record <- TRUE
+    s1 <- get_state(y1 = y1, y2 = y2, h = h)
     while(iter<=duration){
       y_step <- mvrnorm(n = 1, mu=c(0,0), Sigma=matrix(c(sigma^2,0,0,sigma^2), 2,2))
       y_candidate1 <- clamp(y1+y_step[1])
@@ -317,21 +344,31 @@ simul_IDM_post_trial <- function(duration, init_loc = c(0.3,0.3), C = 0.2, N = 2
           
         }
       }
-
+      s2 <- get_state(y1 = y1, y2 = y2, h = h)
+      if (mind_change(s1,s2)&record){
+        #print(s1)
+        #print(s2)
+        loc_com <- c(y1,y2)
+        iter_post <- iter
+        record <- FALSE
+      }
       iter <- iter + 1
     }
+    #print(mind_change(s1,s2))
+    #print(s1)
+    #print(s2)
   }else{
     print("Wrong mode!")
   }
   R <- get_state(y1 = y1, y2 = y2, h = h)
   #print(c(y1,y2))
-  return(list("Trajectory" = location, "loc" = c(y1,y2), "R" = R))
+  return(list("Trajectory" = location, "loc" = c(y1,y2), "R" = R, "loc_com" = loc_com, iter_post = iter_post))
 }
 
 
 simul_IDM_com <- function(C = 0.1, h = 0.4, duration = 500){
   init_result <- simul_IDM_one_trial(C = C, h = h, mode = "coarse-grained")
-  final_result <- simul_IDM_post_trial(duration = duration, init_loc = init_result$loc, mode = "coarse-grained")
+  final_result <- simul_IDM_post_trial(duration = duration, h = h, init_loc = init_result$loc, mode = "coarse-grained")
   
   uncertain <- as.numeric(final_result$R == 0) # whether final state is in the middle of two boundaries
   
@@ -343,7 +380,8 @@ simul_IDM_com <- function(C = 0.1, h = 0.4, duration = 500){
     change_of_mind <- 0
   }
   
-  return(list(uncertain = uncertain, change = change_of_mind, iter = init_result$iter))
+  return(list(RT = init_result$RT, uncertain = uncertain, change = change_of_mind, 
+              iter = init_result$iter, loc_init = init_result$loc, loc_com = final_result$loc_com, iter_post = final_result$iter_post))
   
 }
 
