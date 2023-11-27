@@ -42,20 +42,19 @@ dFdy2 <- function(y1,y2, W_pos, W_neg, B2, theta, beta, N){
 }
 
 ## get the probability for all states 
-N <- 1000 # here N is the number of neurons in one population
-beta <- 1/24
-prob <- matrix(0, nrow = N-1, ncol = N-1)
+#N <- 1000 # here N is the number of neurons in one population
+#beta <- 1/24
+#prob <- matrix(0, nrow = N-1, ncol = N-1)
 # first calculate Z
-for(i in 1:N-1){
-  for(j in 1:N-1){
-    prob[i,j] <- exp(-beta*free_energy(i/N,j/N))
-  }
-}
+#for(i in 1:N-1){
+#  for(j in 1:N-1){
+#    prob[i,j] <- exp(-beta*free_energy(i/N,j/N))
+#  }
+#}
 
-Z <- sum(prob)
-prob_scaled <- prob/Z # divided by Z to make it a valid pmf
-prob_scaled_vec <- as.vector(prob_scaled)
-
+#Z <- sum(prob)
+#prob_scaled <- prob/Z # divided by Z to make it a valid pmf
+#prob_scaled_vec <- as.vector(prob_scaled)
 
 
 
@@ -466,7 +465,7 @@ plot_trajectory <- function(result, W_pos){
   title(main = paste("Self-excitation is", W_pos))
 }
 
-simul_IDM <- function(nsim, prob_scaled_vec, C, N = 2000, W_pos = 52500, W_neg = 8400, Bns = 2500, Bs = 1000, # mode = "coarse-grained"
+simul_IDM <- function(nsim, prob_scaled_vec, C, N = 2000, W_pos = 52500, W_neg = 8400, Bns = 2500, Bs = 500, # Bns = 1500, Bs = 1000
                       beta = 1/24, theta = 51450, Ter = 0.3, h = 0.4, D = 0.05, sigma = 0.01, dt = 0.001, mode = "Euler-Maruyama"){ # D = 0.05, 2/(1000*exp(1))
   
   B1 <- Bs*(1+C) + Bns
@@ -648,7 +647,7 @@ DDM_fit <- function(IDM_data){
     if (any(densities == 0)) return(1e6)
     return(-sum(log(densities)))
   }
-  start <- c(runif(2, 0.5, 3), 0.1, runif(1, 0, 0.5))
+  start <- c(runif(2, 0, 3), 0.1, runif(1, 0, 0.5))
   names(start) <- c("a", "v", "t0", "sv")#, "sz", "st0")
   IDM_diff <- nlminb(start, IDM_diffusion, lower = 0, 
                      rt=IDM_data$RT, response=IDM_data$Response)
@@ -656,8 +655,8 @@ DDM_fit <- function(IDM_data){
   return(IDM_diff)
 }
 # simulate in IDM and fit with DDM
-IDM_DDM <- function(C=0.2, Bns = 2500, Bs = 1000, Ter = 0.3, h = 0.4){
-  simul_results <- simul_IDM(1000, prob_scaled_vec = prob_scaled_vec, C = C, Ter = Ter, h = h, mode = "coarse-grained")
+IDM_DDM <- function(C = 0.2, Bns = 2500, Bs = 1000, Ter = 0.3, h = 0.4, n_trials = 1000, D=0.05, mode = "coarse-grained"){
+  simul_results <- simul_IDM(n_trials, prob_scaled_vec = prob_scaled_vec, C = C, Ter = Ter, h = h, D = D, mode = mode)
   DDM_fit_results <- DDM_fit(simul_results)
   #DDM_fit_params <- DDM_fit_results$par
   #DDM_fit_convergence <- DDM_fit_results$convergence
@@ -739,30 +738,6 @@ IDM_DDM <- function(C=0.2, Bns = 2500, Bs = 1000, Ter = 0.3, h = 0.4){
 
 
 
-DDM_fit <- function(IDM_data){
-  #start_time <- Sys.time()
-  
-  IDM_diffusion <- function(pars, rt, response){
-    densities <- ddiffusion(rt, response=response, 
-                            a=pars["a"],        # threshold separation.
-                            v=pars["v"],        # drift rate.
-                            t0=pars["t0"],      # non-decision time. 
-                            #sz=pars["sz"],     # inter-trial-variability of starting point.
-                            #st0=pars["st0"],   # inter-trial-variability of non-decision components.
-                            sv=pars["sv"]       # inter-trial-variability of drift rate, 0<sv<2, default = 0.
-    )
-    if (any(densities == 0)) return(1e6)
-    return(-sum(log(densities)))
-  }
-  start <- c(runif(2, 0.5, 3), 0.1, runif(1, 0, 0.5))
-  names(start) <- c("a", "v", "t0", "sv")#, "sz", "st0")
-  IDM_diff <- nlminb(start, IDM_diffusion, lower = 0, 
-                     rt=IDM_data$RT, response=IDM_data$Response)
-  #print(Sys.time() - start_time)
-  return(IDM_diff)
-}
-
-
 IDM_fit <- function(IDM_data){
   #start_time <- Sys.time()
   
@@ -778,7 +753,7 @@ IDM_fit <- function(IDM_data){
     if (any(densities == 0)) return(1e6)
     return(-sum(log(densities)))
   }
-  start <- c(runif(2, 0.5, 3), 0.1, runif(1, 0, 0.5))
+  start <- c(runif(1, 0.5, 2),runif(1, 0, 4), runif(1, 0, 1), runif(1, 0, 0.5))
   names(start) <- c("a", "v", "t0", "sv")#, "sz", "st0")
   IDM_diff <- nlminb(start, IDM_diffusion, lower = 0, 
                      rt=IDM_data$RT, response=IDM_data$Response)
